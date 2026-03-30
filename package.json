@@ -1,0 +1,25 @@
+{
+  "name": "pc-network-tool",
+  "version": "0.1.0",
+  "description": "PC network information viewer",
+  "author": "akisho",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "dependencies": {
+    "systeminformation": "^5.31.5"
+  },
+  "devDependencies": {
+    "electron": "^39.8.3",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "com.example.pcnetworktool",
+    "productName": "PC Network Tool",
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

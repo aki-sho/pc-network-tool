@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';"
+  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PC Network Tool</title>
+  <link rel="stylesheet" href="./styles/base.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>PC Network Tool</h1>
+    <button id="reloadButton">再取得</button>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>概要</h2>
+      <div id="summaryGrid" class="summary-grid"></div>
+    </section>
+
+    <section class="card">
+      <h2>アダプタ一覧</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>既定</th>
+              <th>名前</th>
+              <th>状態</th>
+              <th>種類</th>
+              <th>IPv4</th>
+              <th>IPv6</th>
+              <th>ゲートウェイ</th>
+              <th>DNS</th>
+              <th>MAC</th>
+              <th>DHCP</th>
+              <th>仮想</th>
+            </tr>
+          </thead>
+          <tbody id="adapterTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>接続中の基本情報</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Protocol</th>
+              <th>Local Address</th>
+              <th>Local Port</th>
+              <th>Remote Address</th>
+              <th>Remote Port</th>
+              <th>State</th>
+              <th>PID</th>
+              <th>Process</th>
+            </tr>
+          </thead>
+          <tbody id="connectionTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="./renderer/renderer.js"></script>
+</body>
+</html>
