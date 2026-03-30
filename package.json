@@ -19,7 +19,10 @@
     "appId": "com.example.pcnetworktool",
     "productName": "PC Network Tool",
     "win": {
-      "target": "nsis"
+       "target": [
+          "nsis",
+          "portable"
+        ]
     }
   }
 }
