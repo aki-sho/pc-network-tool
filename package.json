@@ -1,6 +1,6 @@
 {
   "name": "pc-network-tool",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "PC network information viewer",
   "author": "akisho",
   "main": "main.js",
