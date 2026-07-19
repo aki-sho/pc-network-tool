@@ -1,13 +1,13 @@
 # PC Network Tool
 
 PC Network Tool は、Windows 上で現在のネットワーク設定や接続状態を確認するためのデスクトップアプリです。  
-Electron を使用し、HTML・CSS・JavaScript ベースで構成しています。
+Tauri 2、Rust、HTML、CSS、JavaScript で構成しています。
 
 PC のネットワーク設定を行う前や、VPN 接続、仮想マシン接続、クラウド接続の確認前に、まず自分の環境がどうなっているかを把握することを目的としています。
 
 ## バージョン
 
-v1.0.0
+v1.0.1
 
 ## 主な機能
 
@@ -64,16 +64,19 @@ IP アドレスが DHCP で取得されているか、固定 IP 設定かを確�
 ## 動作環境
 
 - Windows
+- WebView2 Runtime
+- Rust（ソースからビルドする場合）
 - Node.js
 - npm
 
 ## 使用技術
 
-- Electron
+- Tauri 2
+- Rust
 - HTML
 - CSS
 - JavaScript
-- systeminformation
+- PowerShell
 
 ## インストール
 
@@ -85,13 +88,23 @@ npm install
 
 開発用に起動します。
 
-npm start
+npm run tauri:dev
 
 ## ビルド方法
 
-Windows 向けにビルドします。
+Windows向けのNSISインストーラー、単体ポータブルEXE、ZIP、各SHA-256を
+`dist` に生成します。
 
-npm run build
+npm run release:windows
+
+## 配布形式
+
+- `PC-Network-Tool-Setup-1.0.1.exe`: NSISインストール版
+- `PC-Network-Tool-Portable-1.0.1.exe`: インストール不要の単体EXE
+- `PC-Network-Tool-Portable-1.0.1.zip`: 単体EXEと利用説明
+
+インストール版のデータは通常のAppDataに保存されます。ポータブル版は、
+EXEと同じ場所の `PC-Network-Tool-PortableData` だけを使用します。
 
 ## 現在のバージョンで確認できる項目
 

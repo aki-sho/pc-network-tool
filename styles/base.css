@@ -4,9 +4,9 @@
 
 body {
   margin: 0;
-  font-family: "Meiryo", "Yu Gothic UI", sans-serif;
+  font-family: "Yu Gothic UI", "Meiryo", sans-serif;
   background: #f5f7fb;
-  color: #222;
+  color: #1f2937;
 }
 
 .app-header {
@@ -20,58 +20,59 @@ body {
 
 .app-header h1 {
   margin: 0;
-  font-size: 24px;
+  font-size: 32px;
 }
 
-.app-header button {
-  padding: 10px 16px;
+.reload-button {
   border: none;
-  border-radius: 8px;
-  cursor: pointer;
   background: #fff;
-  color: #111;
+  color: #111827;
+  padding: 10px 16px;
+  border-radius: 8px;
   font-weight: 700;
+  cursor: pointer;
 }
 
-.container {
+.app-main {
   padding: 20px;
   display: grid;
   gap: 20px;
 }
 
-.card {
+.panel {
   background: #fff;
+  padding: 20px;
   border-radius: 14px;
-  padding: 18px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
-.card h2 {
+.panel h2 {
   margin-top: 0;
-  font-size: 20px;
+  margin-bottom: 16px;
+  font-size: 22px;
 }
 
-.summary-grid {
+.card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  gap: 16px;
 }
 
-.summary-item {
+.info-card {
   border: 1px solid #e5e7eb;
   border-radius: 12px;
   padding: 14px;
   background: #fafafa;
 }
 
-.summary-label {
+.info-card-label {
   font-size: 13px;
-  color: #666;
-  margin-bottom: 8px;
+  color: #6b7280;
+  margin-bottom: 10px;
 }
 
-.summary-value {
-  font-size: 18px;
+.info-card-value {
+  font-size: 24px;
   font-weight: 700;
   word-break: break-all;
 }
@@ -83,7 +84,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1100px;
+  min-width: 1000px;
 }
 
 th,
@@ -97,12 +98,13 @@ td {
 
 th {
   background: #f3f4f6;
-  position: sticky;
-  top: 0;
 }
 
-.loading,
+.about-box p {
+  margin: 8px 0;
+}
+
 .error {
-  padding: 12px 0;
+  color: #dc2626;
   font-weight: 700;
 }

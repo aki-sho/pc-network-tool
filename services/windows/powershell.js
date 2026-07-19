@@ -1,0 +1,1 @@
+export const legacyPowerShellNote = "Tauri 移行後は Rust 側で PowerShell を実行するため、このファイルは参考用です。";
