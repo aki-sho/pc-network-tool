@@ -25,9 +25,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Development signing certificate setup failed' }
           & 'npm.cmd' 'test'
           if ($LASTEXITCODE -ne 0) { throw 'Verification or packaging step failed' }
-          & 'npm.cmd' 'run' 'test:signing'
-          if ($LASTEXITCODE -ne 0) { throw 'Verification or packaging step failed' }
           & 'powershell.exe' '-NoProfile' '-ExecutionPolicy' 'Bypass' '-File' 'scripts/build-release.ps1' '-SelfSigned'
+          if ($LASTEXITCODE -ne 0) { throw 'Verification or packaging step failed' }
+          & 'npm.cmd' 'run' 'test:signing'
           if ($LASTEXITCODE -ne 0) { throw 'Verification or packaging step failed' }
           $out = 'github-sync-distribution'
           New-Item -ItemType Directory -Path $out -Force | Out-Null
