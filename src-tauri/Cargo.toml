@@ -1,6 +1,6 @@
 [package]
 name = "pc-network-tool"
-version = "1.0.1"
+version = "1.0.2"
 description = "PC Network Tool"
 authors = ["akisho"]
 edition = "2021"
@@ -13,3 +13,6 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_SystemInformation", "Win32_System_Threading"] }

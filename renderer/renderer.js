@@ -12,6 +12,7 @@ const ipDnsRoot = document.getElementById("ipDnsRoot");
 const portsRoot = document.getElementById("portsRoot");
 const aboutRoot = document.getElementById("aboutRoot");
 const reloadButton = document.getElementById("reloadButton");
+let loading = false;
 
 function setLoading() {
   summaryRoot.innerHTML = `<p>読み込み中...</p>`;
@@ -22,10 +23,17 @@ function setLoading() {
 }
 
 function setError(message) {
-  summaryRoot.innerHTML = `<p class="error">${message}</p>`;
+  const paragraph = document.createElement("p");
+  paragraph.className = "error";
+  paragraph.textContent = message;
+  summaryRoot.replaceChildren(paragraph);
 }
 
 async function loadAll() {
+  if (loading) return;
+  loading = true;
+  reloadButton.disabled = true;
+  reloadButton.textContent = "取得中…";
   try {
     setLoading();
 
@@ -38,7 +46,11 @@ async function loadAll() {
     renderAboutPage(aboutRoot);
   } catch (error) {
     console.error(error);
-    setError("取得に失敗しました。");
+    setError(typeof error === "string" ? error : "取得に失敗しました。再取得してください。");
+  } finally {
+    loading = false;
+    reloadButton.disabled = false;
+    reloadButton.textContent = "再取得";
   }
 }
 

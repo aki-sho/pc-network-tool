@@ -1,7 +1,7 @@
-PC Network Tool Portable v1.0.1
+PC Network Tool Portable v{{VERSION}}
 
 【起動方法】
-PC-Network-Tool-Portable-1.0.1.exe をダブルクリックして起動します。
+{{EXECUTABLE}} をダブルクリックして起動します。
 インストールは不要です。
 
 【PortableData の場所】

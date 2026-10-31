@@ -1,6 +1,6 @@
 {
   "name": "pc-network-tool",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "PC network information viewer",
   "author": "akisho",
   "type": "module",
@@ -8,7 +8,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build --bundles nsis",
-    "test": "cargo test --manifest-path src-tauri/Cargo.toml",
+    "test": "node --test && cargo test --manifest-path src-tauri/Cargo.toml --locked",
+    "test:signing": "powershell -NoProfile -File scripts/test-signing.ps1",
     "release:windows": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1"
   },
   "dependencies": {},

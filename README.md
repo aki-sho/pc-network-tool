@@ -1,5 +1,7 @@
 # PC Network Tool
 
+> 最新バージョン: 1.0.2（2026-10-31）。ローカルの未公開変更を反映し、ソースと配布物を揃えた同期リリースです。
+
 PC Network Tool は、Windows 上で現在のネットワーク設定や接続状態を確認するためのデスクトップアプリです。  
 Tauri 2、Rust、HTML、CSS、JavaScript で構成しています。
 
@@ -97,11 +99,62 @@ Windows向けのNSISインストーラー、単体ポータブルEXE、ZIP、各
 
 npm run release:windows
 
+配布ビルドは、現在のWindowsユーザーの個人証明書ストアにあるコード署名証明書と、
+署名のタイムスタンプを必須とします。証明書のサムプリントを設定して実行します。
+
+```powershell
+$env:WINDOWS_CERTIFICATE_THUMBPRINT = '証明書の40桁のサムプリント'
+npm run release:windows
+```
+
+ローカル検証用の自己署名証明書は、次の手順で作成・利用できます。
+
+```powershell
+powershell -NoProfile -File scripts/new-signing-certificate.ps1
+npm run release:windows -- -SelfSigned
+```
+
+秘密鍵は現在ユーザーのWindows証明書ストアに非エクスポート形式で保存します。
+`.signing` には公開証明書とサムプリントだけを保存し、Gitの対象から除外します。
+自己署名版はファイル名に `-SelfSigned` を付け、公開証明書と署名情報を同梱します。
+Windowsの信頼設定は変更しません。自己署名は公開配布用の発行元認証やSmartScreenの警告解除を保証しません。
+
+署名時は既定で `http://timestamp.digicert.com` にダイジェストを含む署名データを送り、
+タイムスタンプを取得します。EXE本体や秘密鍵は送信しません。
+別のサーバーを使う場合は `-TimestampUrl` で指定できます。
+署名・タイムスタンプ・指定証明書との一致を検証してからZIPとSHA-256を生成します。
+既存の配布ファイルや `PortableData` は削除しません。
+
+開発用の署名なしビルドは `npm run tauri:build` で実行できます。
+
+## セキュリティ上の動作
+
+- PowerShellはWindows APIで取得したシステムディレクトリの絶対パスから起動します。
+- プロファイルや対話入力を無効化し、モジュール探索をWindows標準モジュールに制限します。
+- PowerShellは1回30秒、標準出力・標準エラーはそれぞれ4MiBを上限とします。
+- タイムアウトや出力上限超過ではプロセスを終了し、Windows Job Objectで子孫プロセスも終了します。
+- 取得処理はUIスレッドから分離し、UIとRustの両方で重複取得を防ぎます。
+- パブリックIP取得は接続3秒・全体5秒、応答1KiBまでに制限し、HTTPSの固定取得先から有効なIPアドレスだけを受け入れます。
+- CSPで外部スクリプト、外部ページ埋め込み、不要なWebView通信を制限します。
+
+## テスト
+
+```powershell
+npm test
+```
+
+RustテストではPowerShellの実行先・モジュール探索、タイムアウト、出力上限、
+異常終了、重複取得の抑止とIP値検証を確認します。
+JavaScriptテストでは連打の抑止、失敗後の再取得、エラー文字列の安全な表示を確認します。
+
+自己署名版の配布ビルド後は `npm run test:signing` で、証明書・タイムスタンプの検証と、
+署名なし・別の署名者・改ざんしたEXEの拒否も確認できます。
+
 ## 配布形式
 
-- `PC-Network-Tool-Setup-1.0.1.exe`: NSISインストール版
-- `PC-Network-Tool-Portable-1.0.1.exe`: インストール不要の単体EXE
-- `PC-Network-Tool-Portable-1.0.1.zip`: 単体EXEと利用説明
+- `PC-Network-Tool-Setup-1.0.2.exe`: NSISインストール版
+- `PC-Network-Tool-Portable-1.0.2.exe`: インストール不要の単体EXE
+- `PC-Network-Tool-Portable-1.0.2.zip`: 単体EXEと利用説明
 
 インストール版のデータは通常のAppDataに保存されます。ポータブル版は、
 EXEと同じ場所の `PC-Network-Tool-PortableData` だけを使用します。

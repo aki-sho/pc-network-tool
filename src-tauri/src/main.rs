@@ -1,13 +1,37 @@
 use serde::Serialize;
 use serde_json::Value;
 use std::fs;
-use std::io;
+use std::io::{self, Read};
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
-use std::process::Command;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+mod powershell;
 
 const APP_DIR_NAME: &str = "PC Network Tool";
 const PORTABLE_DATA_DIR_NAME: &str = "PC-Network-Tool-PortableData";
+
+#[derive(Default)]
+struct NetworkRequestState(Arc<AtomicBool>);
+
+struct NetworkRequestGuard(Arc<AtomicBool>);
+
+impl NetworkRequestState {
+    fn acquire(&self) -> Result<NetworkRequestGuard, String> {
+        self.0
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .map_err(|_| "情報を取得中です。完了するまでお待ちください。".to_string())?;
+        Ok(NetworkRequestGuard(Arc::clone(&self.0)))
+    }
+}
+
+impl Drop for NetworkRequestGuard {
+    fn drop(&mut self) {
+        self.0.store(false, Ordering::Release);
+    }
+}
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -130,6 +154,7 @@ fn is_portable_executable(path: &Path) -> bool {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Summary {
     public_ip: String,
     default_adapter: String,
@@ -138,6 +163,7 @@ struct Summary {
 }
 
 #[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 struct Adapter {
     name: String,
     status: String,
@@ -151,6 +177,7 @@ struct Adapter {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Connection {
     protocol: String,
     local_address: String,
@@ -169,34 +196,41 @@ struct NetworkInfo {
     connections: Vec<Connection>,
 }
 
-fn run_powershell(script: &str) -> Result<String, String> {
-    let output = Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            script,
-        ])
-        .output()
-        .map_err(|e| e.to_string())?;
-
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+fn parse_public_ip(bytes: &[u8]) -> Option<String> {
+    let value: Value = serde_json::from_slice(bytes).ok()?;
+    value["ip"]
+        .as_str()?
+        .parse::<IpAddr>()
+        .ok()
+        .map(|ip| ip.to_string())
 }
 
 fn get_public_ip() -> String {
-    let response = reqwest::blocking::get("https://api.ipify.org?format=json");
-    match response {
-        Ok(res) => match res.json::<Value>() {
-            Ok(json) => json["ip"].as_str().unwrap_or("-").to_string(),
-            Err(_) => "-".to_string(),
-        },
-        Err(_) => "-".to_string(),
-    }
+    let fetch = || -> Option<String> {
+        let client = reqwest::blocking::Client::builder()
+            .connect_timeout(Duration::from_secs(3))
+            .timeout(Duration::from_secs(5))
+            .redirect(reqwest::redirect::Policy::none())
+            .https_only(true)
+            .build()
+            .ok()?;
+        let response = client
+            .get("https://api.ipify.org?format=json")
+            .send()
+            .ok()?
+            .error_for_status()
+            .ok()?;
+        if !response.status().is_success() {
+            return None;
+        }
+        let mut bytes = Vec::new();
+        response.take(1025).read_to_end(&mut bytes).ok()?;
+        if bytes.len() > 1024 {
+            return None;
+        }
+        parse_public_ip(&bytes)
+    };
+    fetch().unwrap_or_else(|| "-".to_string())
 }
 
 fn get_adapters() -> Result<Vec<Adapter>, String> {
@@ -225,7 +259,7 @@ $result = foreach ($adapter in $adapters) {
 $result | ConvertTo-Json -Depth 4
 "#;
 
-    let raw = run_powershell(script)?;
+    let raw = powershell::run(script)?;
     if raw.is_empty() {
         return Ok(vec![]);
     }
@@ -278,7 +312,7 @@ $result = foreach ($c in $conns) {
 $result | ConvertTo-Json -Depth 4
 "#;
 
-    let raw = run_powershell(script)?;
+    let raw = powershell::run(script)?;
     if raw.is_empty() {
         return Ok(vec![]);
     }
@@ -308,7 +342,20 @@ $result | ConvertTo-Json -Depth 4
 }
 
 #[tauri::command]
-fn get_network_info() -> Result<NetworkInfo, String> {
+async fn get_network_info(
+    requests: tauri::State<'_, NetworkRequestState>,
+) -> Result<NetworkInfo, String> {
+    let guard = requests.acquire()?;
+    tauri::async_runtime::spawn_blocking(move || {
+        // Keep the gate until the worker finishes, even if the IPC future is dropped.
+        let _guard = guard;
+        collect_network_info()
+    })
+    .await
+    .map_err(|_| "情報取得処理を完了できませんでした。再取得してください。".to_string())?
+}
+
+fn collect_network_info() -> Result<NetworkInfo, String> {
     let adapters = get_adapters()?;
     let connections = get_connections()?;
     let public_ip = get_public_ip();
@@ -348,6 +395,7 @@ fn main() {
     let setup_paths = runtime_paths.clone();
     tauri::Builder::default()
         .manage(runtime_paths)
+        .manage(NetworkRequestState::default())
         .setup(move |app| {
             let window_config = app
                 .config()
@@ -368,6 +416,30 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_duplicate_requests_and_releases_after_error() {
+        let state = NetworkRequestState::default();
+        let guard = state.acquire().unwrap();
+        assert!(state.acquire().is_err());
+        drop(guard);
+        assert!(state.acquire().is_ok());
+    }
+
+    #[test]
+    fn public_ip_accepts_only_ip_addresses() {
+        assert_eq!(
+            parse_public_ip(br#"{"ip":"203.0.113.1"}"#).as_deref(),
+            Some("203.0.113.1")
+        );
+        assert_eq!(
+            parse_public_ip(br#"{"ip":"2001:db8::1"}"#).as_deref(),
+            Some("2001:db8::1")
+        );
+        assert!(parse_public_ip(br#"{"ip":"<script>bad()</script>"}"#).is_none());
+        assert!(parse_public_ip(br#"{"ip":null}"#).is_none());
+        assert!(parse_public_ip(b"not json").is_none());
+    }
 
     #[test]
     fn portable_release_name_is_detected_case_insensitively() {

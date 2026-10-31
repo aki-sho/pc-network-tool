@@ -33,6 +33,11 @@ body {
   cursor: pointer;
 }
 
+.reload-button:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .app-main {
   padding: 20px;
   display: grid;
