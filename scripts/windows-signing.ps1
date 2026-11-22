@@ -38,10 +38,10 @@ function Assert-ReleaseSignature {
         $signature.SignerCertificate.Subject -ne $signature.SignerCertificate.Issuer) {
       throw "Signature verification failed ($($signature.Status)): $LiteralPath -- $($signature.StatusMessage)"
     }
-    if (-not ('PcNetworkTool.AuthenticodeVerification' -as [type])) {
+    if (-not ('NexaLinkMonitor.AuthenticodeVerification' -as [type])) {
       Add-Type -TypeDefinition (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'AuthenticodeVerification.cs') -Raw)
     }
-    $trustError = [PcNetworkTool.AuthenticodeVerification]::Verify((Get-Item -LiteralPath $LiteralPath).FullName)
+    $trustError = [NexaLinkMonitor.AuthenticodeVerification]::Verify((Get-Item -LiteralPath $LiteralPath).FullName)
     # CERT_E_UNTRUSTEDROOT only. Do not accept arbitrary UnknownError results.
     if ($trustError -ne -2146762487) {
       throw "Authenticode verification failed ($trustError): $LiteralPath"

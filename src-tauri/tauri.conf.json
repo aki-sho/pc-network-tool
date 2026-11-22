@@ -1,11 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "PC Network Tool",
-  "version": "1.0.2",
+  "productName": "NexaLink Monitor",
+  "version": "1.1.0",
   "identifier": "com.example.pcnetworktool",
   "build": {
-    "beforeBuildCommand": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-frontend.ps1",
-    "frontendDist": "../.tauri-frontend"
+    "frontendDist": "../frontend"
   },
   "app": {
     "withGlobalTauri": true,
@@ -14,16 +13,20 @@
     },
     "windows": [
       {
+        "label": "main",
         "create": false,
-        "title": "PC Network Tool",
+        "title": "NexaLink Monitor",
         "width": 1280,
         "height": 900,
+        "minWidth": 640,
+        "minHeight": 480,
         "resizable": true
       }
     ]
   },
   "bundle": {
     "active": true,
+    "publisher": "akisho",
     "icon": [
       "icons/icon.ico"
     ],
@@ -32,7 +35,8 @@
     ],
     "windows": {
       "nsis": {
-        "installMode": "currentUser"
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico"
       }
     }
   }

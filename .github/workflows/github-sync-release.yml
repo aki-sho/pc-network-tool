@@ -1,8 +1,13 @@
-name: GitHub sync verification
+name: Windows distribution
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
 permissions:
   contents: read
+
 jobs:
   verify-and-package:
     runs-on: windows-latest
@@ -11,36 +16,127 @@ jobs:
       CARGO_BUILD_JOBS: 2
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: rustup default stable
-      - name: Verify and package
+      - name: Test and package the Windows application
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/new-signing-certificate.ps1
+          $app = Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json
+          $package = Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json
+          if ($app.version -ne $package.version) { throw 'App and npm versions must match' }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$($app.version)") {
+            throw 'The release tag must match the app version'
+          }
+
+          npm.cmd test
+          if ($LASTEXITCODE -ne 0) { throw 'Application tests failed' }
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/new-signing-certificate.ps1
           if ($LASTEXITCODE -ne 0) { throw 'Development signing certificate setup failed' }
-          & 'npm.cmd' 'test'
-          if ($LASTEXITCODE -ne 0) { throw 'Verification or packaging step failed' }
-          & 'powershell.exe' '-NoProfile' '-ExecutionPolicy' 'Bypass' '-File' 'scripts/build-release.ps1' '-SelfSigned'
-          if ($LASTEXITCODE -ne 0) { throw 'Verification or packaging step failed' }
-          & 'npm.cmd' 'run' 'test:signing'
-          if ($LASTEXITCODE -ne 0) { throw 'Verification or packaging step failed' }
-          $out = 'github-sync-distribution'
-          New-Item -ItemType Directory -Path $out -Force | Out-Null
-          foreach ($dir in @('dist','dist-unsigned')) { if (Test-Path -LiteralPath $dir) { Get-ChildItem -LiteralPath $dir -File | Where-Object { $_.Name -match '\.(exe|zip|sha256|cer|txt)$' } | Copy-Item -Destination $out } }
-          $binaries = @(Get-ChildItem -LiteralPath $out -File | Where-Object { $_.Extension -in @('.exe','.zip') })
-          if ($binaries.Count -eq 0) { throw 'No distribution binaries were produced' }
-          foreach ($file in $binaries) { $hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant(); [IO.File]::WriteAllText(($file.FullName+'.sha256'), $hash+'  '+$file.Name+[Environment]::NewLine, [Text.Encoding]::ASCII) }
-          $items = @(Get-ChildItem -LiteralPath $out -File | ForEach-Object { @{name=$_.Name;size=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} })
-          @{app='pc-network-tool';version='1.0.2';commit=$env:GITHUB_SHA;repository=$env:GITHUB_REPOSITORY;run=$env:GITHUB_RUN_ID;files=$items} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $out 'release-build.json') -Encoding utf8
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1 -SelfSigned
+          if ($LASTEXITCODE -ne 0) { throw 'Windows packaging failed' }
+          npm.cmd run test:signing
+          if ($LASTEXITCODE -ne 0) { throw 'Signature tests failed' }
+
+          $prefix = $app.productName.Replace(' ', '-')
+          $binaries = @(
+            "$prefix-Setup-$($app.version)-SelfSigned.exe",
+            "$prefix-Portable-$($app.version)-SelfSigned.exe",
+            "$prefix-Portable-$($app.version)-SelfSigned.zip"
+          )
+          foreach ($name in $binaries) {
+            $path = Join-Path 'dist' $name
+            $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ((Get-Content -LiteralPath "$path.sha256" -Raw).Trim() -ne "$hash  $name") {
+              throw "Checksum mismatch for $name"
+            }
+          }
+
+          $smokeFolder = Join-Path $env:RUNNER_TEMP 'nexalink-startup'
+          New-Item -ItemType Directory -Path $smokeFolder | Out-Null
+          $portable = Join-Path $smokeFolder $binaries[1]
+          Copy-Item -LiteralPath (Join-Path 'dist' $binaries[1]) -Destination $portable
+          $application = Start-Process -FilePath $portable -WorkingDirectory $smokeFolder -WindowStyle Hidden -PassThru
+          try {
+            if ($application.WaitForExit(5000)) { throw "Portable app exited at startup with code $($application.ExitCode)" }
+            $settingsPath = Join-Path $smokeFolder 'NexaLink-Monitor-PortableData/config/settings.json'
+            $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+            if ($settings.version -ne $app.version) { throw 'Portable settings version does not match the release' }
+          } finally {
+            if (-not $application.HasExited) { Stop-Process -Id $application.Id }
+          }
+
+          $files = @(Get-ChildItem -LiteralPath 'dist' -File | ForEach-Object {
+            @{
+              name = $_.Name
+              size = $_.Length
+              sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            }
+          })
+          @{
+            app = $app.productName
+            version = $app.version
+            commit = (git rev-parse HEAD).Trim()
+            repository = $env:GITHUB_REPOSITORY
+            run = $env:GITHUB_RUN_ID
+            files = $files
+          } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath 'dist/release-build.json' -Encoding utf8
+
       - name: Upload verified distribution
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: github-sync-distribution
-          path: github-sync-distribution/
+          name: windows-distribution
+          path: dist/
           if-no-files-found: error
           retention-days: 14
+
+  publish:
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: verify-and-package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: windows-distribution
+          path: distribution
+      - name: Publish verified release files
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $manifestPath = 'distribution/release-build.json'
+          $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+          if ($env:GITHUB_REF_NAME -ne "v$($manifest.version)" -or
+              $env:GITHUB_RUN_ID -ne $manifest.run -or
+              $env:GITHUB_REPOSITORY -ne $manifest.repository) {
+            throw 'The distribution does not match this release run'
+          }
+
+          $assets = foreach ($file in $manifest.files) {
+            $path = Join-Path 'distribution' $file.name
+            $hash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+            if ($hash -ne $file.sha256) { throw "Checksum mismatch for $($file.name)" }
+            $path
+          }
+
+          $notes = Join-Path $env:RUNNER_TEMP 'release-notes.md'
+          @"
+          Windows x64 向けのインストール版とポータブル版です。
+
+          更新内容は [CHANGELOG.md](https://github.com/$env:GITHUB_REPOSITORY/blob/$($manifest.commit)/CHANGELOG.md) をご覧ください。
+
+          EXE は自己署名証明書で署名しており、署名とタイムスタンプを検証済みです。Windows が発行元について警告を出す場合があります。SHA-256 は各チェックサムファイル、ビルド元は release-build.json で確認できます。
+
+          [Windows ビルドと検証結果](https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID)
+          "@ | Set-Content -LiteralPath $notes -Encoding utf8
+          gh release create $env:GITHUB_REF_NAME @assets $manifestPath --repo $env:GITHUB_REPOSITORY --verify-tag --title "$($manifest.app) $env:GITHUB_REF_NAME" --notes-file $notes
+          if ($LASTEXITCODE -ne 0) { throw 'GitHub Releases publication failed' }

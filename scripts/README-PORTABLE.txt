@@ -1,4 +1,4 @@
-PC Network Tool Portable v{{VERSION}}
+NexaLink Monitor Portable v{{VERSION}}
 
 【起動方法】
 {{EXECUTABLE}} をダブルクリックして起動します。
@@ -6,14 +6,15 @@ PC Network Tool Portable v{{VERSION}}
 
 【PortableData の場所】
 初回起動時に、EXE と同じフォルダーへ
-「PC-Network-Tool-PortableData」フォルダーが自動作成されます。
+「NexaLink-Monitor-PortableData」フォルダーが自動作成されます。
 設定、ログ、WebView セッション、キャッシュ、一時ファイルはすべてこの中へ保存されます。
+同じ場所に旧版の「PC-Network-Tool-PortableData」がある場合は、旧版のデータを引き継げます。
 
 【別の場所へ移動する方法】
-アプリを終了してから、EXE と「PC-Network-Tool-PortableData」フォルダーを
+アプリを終了してから、EXE と使用中のデータフォルダーを
 一緒に移動してください。次回起動時も、移動先のデータを使用できます。
 データを引き継がない場合は、EXE だけを移動してください。
 
 【削除方法】
-アプリを終了し、EXE と「PC-Network-Tool-PortableData」フォルダーを削除します。
+アプリを終了し、EXE と使用中のデータフォルダーを削除します。
 レジストリや AppData にポータブル版の設定を残す必要はありません。

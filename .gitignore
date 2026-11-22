@@ -1,25 +1,26 @@
-node_modules/
-dist/
-src-tauri/target/
-src-tauri/gen/
-.tauri-frontend/
-.signing/
-# Local release archives and transient outputs
-/release-history/
-/.github-sync*/
-/github-sync-distribution/
-/src-tauri/target-*/
-
-# Local credentials, environments and generated output
-/.agents/
-/.codex/
+# Dependencies and generated build files
 /node_modules/
+/src-tauri/target/
+/src-tauri/target-*/
+/src-tauri/gen/
+/.tauri-frontend/
+/build/
+/.cache/
 /dist/
 /dist-web/
 /dist-unsigned/
 /dist-portable/
-/build/
-/.cache/
+/release-history/
+/.github-sync*/
+/github-sync-distribution/
+/artifacts/
+/outputs/
+
+# Local credentials, tool state and temporary files
+/.agents/
+/.codex/
+/.aws/
+/.signing/
 /.tmp/
 /.release-test/
 /.release-stage/
@@ -28,12 +29,8 @@ src-tauri/gen/
 /.verify-venv/
 /.runtime/
 /.source-backup/
-/outputs/
-/src-tauri/target/
-/artifacts/
 /.dotnet/
 /.nuget/
-/.signing/
 **/__pycache__/
 *.pyc
 *.log

@@ -1,7 +1,8 @@
 [package]
-name = "pc-network-tool"
-version = "1.0.2"
-description = "PC Network Tool"
+name = "nexalink-monitor"
+version = "1.1.0"
+description = "NexaLink Monitor"
+license = "MIT"
 authors = ["akisho"]
 edition = "2021"
 

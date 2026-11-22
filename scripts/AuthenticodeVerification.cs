@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace PcNetworkTool
+namespace NexaLinkMonitor
 {
     // Keep Windows' Authenticode integrity checks, but expose the exact error so
     // local self-signed builds can distinguish an untrusted root from corruption.

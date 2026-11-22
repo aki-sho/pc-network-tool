@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $appConfiguration = Get-Content -LiteralPath (Join-Path $root 'src-tauri\tauri.conf.json') -Raw | ConvertFrom-Json
 $version = $appConfiguration.version
+$filePrefix = $appConfiguration.productName.Replace(' ', '-')
 if ($version -notmatch '^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$') {
   throw 'The application version is not suitable for a release filename.'
 }
@@ -43,10 +44,10 @@ New-Item -ItemType Directory -Path (Split-Path -Parent $buildConfigurationPath) 
 $dist = Join-Path $root 'dist'
 $targetRelease = Join-Path $root 'src-tauri\target\release'
 $suffix = if ($SelfSigned) { '-SelfSigned' } else { '' }
-$portableName = "PC-Network-Tool-Portable-$version$suffix.exe"
-$setupName = "PC-Network-Tool-Setup-$version$suffix.exe"
-$zipName = "PC-Network-Tool-Portable-$version$suffix.zip"
-$zipRootName = "PC-Network-Tool-Portable-$version$suffix"
+$portableName = "$filePrefix-Portable-$version$suffix.exe"
+$setupName = "$filePrefix-Setup-$version$suffix.exe"
+$zipName = "$filePrefix-Portable-$version$suffix.zip"
+$zipRootName = "$filePrefix-Portable-$version$suffix"
 $stagingRoot = Join-Path $dist ('.staging-' + [Guid]::NewGuid().ToString('N'))
 $stagingCreated = $false
 
@@ -55,7 +56,7 @@ try {
   npm run tauri:build -- --config $buildConfigurationPath -- --locked
   if ($LASTEXITCODE -ne 0) { throw "Tauri build failed with exit code $LASTEXITCODE" }
 
-  $appExe = Join-Path $targetRelease 'pc-network-tool.exe'
+  $appExe = Join-Path $targetRelease "$($filePrefix.ToLowerInvariant()).exe"
   $installerName = "$($appConfiguration.productName)_${version}_x64-setup.exe"
   $installer = Join-Path $targetRelease "bundle\nsis\$installerName"
   Assert-ReleaseSignature -LiteralPath $installer -Thumbprint $certificate.Thumbprint `
@@ -86,8 +87,9 @@ try {
   $portableReadme = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'README-PORTABLE.txt') -Raw -Encoding UTF8
   $portableReadme = $portableReadme.Replace('{{VERSION}}', $version).Replace('{{EXECUTABLE}}', $portableName)
   Set-Content -LiteralPath (Join-Path $zipRoot 'README.txt') -Value $portableReadme -Encoding UTF8
+  Copy-Item -LiteralPath (Join-Path $root 'LICENSE') -Destination $zipRoot
 
-  $publicCertificateName = "PC-Network-Tool-Signing-$version$suffix.cer"
+  $publicCertificateName = "$filePrefix-Signing-$version$suffix.cer"
   Export-Certificate -Cert $certificate -FilePath (Join-Path $stagingRoot $publicCertificateName) | Out-Null
   Copy-Item -LiteralPath (Join-Path $stagingRoot $publicCertificateName) -Destination $zipRoot
   $signingNotice = @"
@@ -97,7 +99,7 @@ Self-signed development build: $([bool]$SelfSigned)
 EXE signatures use SHA-256 and a timestamp.
 $(if ($SelfSigned) { 'This certificate is self-signed. Windows does not trust this publisher by default. No Windows trust settings have been changed. The .cer file contains only the public certificate.' })
 "@
-  $noticeName = "PC-Network-Tool-Signing-$version$suffix.txt"
+  $noticeName = "$filePrefix-Signing-$version$suffix.txt"
   Set-Content -LiteralPath (Join-Path $stagingRoot $noticeName) -Value $signingNotice -Encoding UTF8
   Set-Content -LiteralPath (Join-Path $zipRoot 'SIGNING.txt') -Value $signingNotice -Encoding UTF8
   Compress-Archive -LiteralPath $zipRoot -DestinationPath (Join-Path $stagingRoot $zipName) -CompressionLevel Optimal

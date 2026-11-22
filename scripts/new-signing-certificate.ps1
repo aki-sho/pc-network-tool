@@ -18,8 +18,8 @@ if (Test-Path -LiteralPath $configurationPath) {
 # Keep the private key in Windows; do not change Trusted Root/Publisher stores.
 $certificate = New-SelfSignedCertificate `
   -Type CodeSigningCert `
-  -Subject 'CN=PC Network Tool Local Development' `
-  -FriendlyName 'PC Network Tool self-signed development' `
+  -Subject 'CN=NexaLink Monitor Local Development' `
+  -FriendlyName 'NexaLink Monitor self-signed development' `
   -CertStoreLocation 'Cert:\CurrentUser\My' `
   -KeyAlgorithm RSA `
   -KeyLength 3072 `

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NexaLink Monitor</title>
+  <link rel="icon" href="./assets/nexalink-monitor.png" type="image/png" />
+  <link rel="stylesheet" href="./styles/base.css" />
+  <link rel="stylesheet" href="./styles/layout.css" />
+  <link rel="stylesheet" href="./styles/cards.css" />
+  <link rel="stylesheet" href="./styles/tables.css" />
+</head>
+<body>
+  <div id="overview" class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview">
+        <img src="./assets/nexalink-monitor.png" width="52" height="52" alt="" />
+        <span>NexaLink <br />Monitor</span>
+      </a>
+
+      <nav class="sidebar-nav" aria-label="画面内の移動">
+        <a href="#overview" aria-current="location">
+          <svg class="icon" aria-hidden="true"><use href="./assets/ui-icons.svg#home"></use></svg>
+          概要
+        </a>
+        <a href="#adapters">
+          <svg class="icon" aria-hidden="true"><use href="./assets/ui-icons.svg#adapters"></use></svg>
+          アダプター一覧
+        </a>
+        <a href="#ip-dns">
+          <svg class="icon" aria-hidden="true"><use href="./assets/ui-icons.svg#globe"></use></svg>
+          IP / DNS
+        </a>
+        <a href="#connections">
+          <svg class="icon" aria-hidden="true"><use href="./assets/ui-icons.svg#connections"></use></svg>
+          接続中の通信
+        </a>
+        <a href="#about">
+          <svg class="icon" aria-hidden="true"><use href="./assets/ui-icons.svg#info"></use></svg>
+          About
+        </a>
+      </nav>
+    </aside>
+
+    <main class="app-main">
+      <header class="app-header">
+        <div>
+          <h1>ネットワークの状態</h1>
+          <p>この PC のネットワーク設定と接続情報を確認できます。</p>
+        </div>
+        <div class="header-actions">
+          <span id="refreshStatus" class="refresh-status" data-state="loading" role="status">取得中…</span>
+          <button id="reloadButton" class="reload-button" type="button" disabled>
+            <svg class="icon" aria-hidden="true"><use href="./assets/ui-icons.svg#refresh"></use></svg>
+            <span>再取得</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="dashboard">
+        <p id="refreshError" class="error-message" role="alert" hidden></p>
+        <section id="summaryRoot" aria-label="ネットワークの概要"></section>
+
+        <section id="adapters" class="panel adapter-panel" aria-labelledby="adaptersHeading">
+          <h2 id="adaptersHeading">アダプター一覧</h2>
+          <div id="adaptersRoot"></div>
+        </section>
+
+        <div class="details-grid">
+          <section id="ip-dns" class="panel" aria-labelledby="ipDnsHeading">
+            <h2 id="ipDnsHeading">IP / DNS</h2>
+            <div id="ipDnsRoot"></div>
+          </section>
+
+          <section class="panel" aria-labelledby="connectionSummaryHeading">
+            <h2 id="connectionSummaryHeading">TCP の接続状態</h2>
+            <div id="connectionSummaryRoot"></div>
+          </section>
+        </div>
+
+        <section id="connections" class="panel connections-panel" aria-labelledby="connectionsHeading">
+          <div class="panel-header">
+            <h2 id="connectionsHeading">接続中の通信</h2>
+            <span id="connectionListCount" class="panel-note"></span>
+          </div>
+          <div id="portsRoot"></div>
+        </section>
+
+        <section id="about" class="panel" aria-labelledby="aboutHeading">
+          <h2 id="aboutHeading">About</h2>
+          <div class="about-box">
+            <img src="./assets/nexalink-monitor.png" width="48" height="48" alt="" />
+            <div>
+              <p class="about-name">NexaLink Monitor <span id="appVersion" class="about-version"></span></p>
+              <p>Windows 用ネットワークモニター</p>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="./renderer/renderer.js"></script>
+</body>
+</html>

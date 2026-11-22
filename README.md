@@ -1,191 +1,73 @@
-# PC Network Tool
+# NexaLink Monitor
 
-> 最新バージョン: 1.0.2（2026-10-31）。ローカルの未公開変更を反映し、ソースと配布物を揃えた同期リリースです。
+NexaLink Monitor は、Windows PC のネットワーク設定と通信状態を確認するためのデスクトップアプリです。アダプター、IP / DNS、TCP の通信を 1 画面で確認できます。
 
-PC Network Tool は、Windows 上で現在のネットワーク設定や接続状態を確認するためのデスクトップアプリです。  
-Tauri 2、Rust、HTML、CSS、JavaScript で構成しています。
+## ダウンロード
 
-PC のネットワーク設定を行う前や、VPN 接続、仮想マシン接続、クラウド接続の確認前に、まず自分の環境がどうなっているかを把握することを目的としています。
+最新版は [GitHub Releases](https://github.com/aki-sho/pc-network-tool/releases/latest) から取得できます。Windows x64 と WebView2 Runtime が必要です。
 
-## バージョン
+| ファイル | 用途 |
+| --- | --- |
+| `NexaLink-Monitor-Setup-…exe` | 現在の Windows ユーザー向けの NSIS インストーラー |
+| `NexaLink-Monitor-Portable-…exe` | インストール不要の単体 EXE |
+| `NexaLink-Monitor-Portable-…zip` | ポータブル EXE、利用説明、ライセンス、署名情報 |
 
-v1.0.1
+`SelfSigned` と付いた配布物には自己署名のコード署名を使用しています。Windows が発行元を信頼できない旨の警告を表示することがあります。EXE と ZIP の SHA-256 は、同じ名前の `.sha256` ファイルで確認できます。
 
-## 主な機能
+## 確認できる情報
 
-### 1. アダプタ一覧の表示
-現在の PC に存在するネットワークアダプタを一覧表示します。
+- パブリック IP と IPv4 の既定アダプター
+- ネットワークアダプターごとの状態、IPv4 / IPv6、MAC アドレス、DHCP、ゲートウェイ、DNS
+- TCP の確立済み・待受中セッションの総数と、最大 100 件のアドレス、ポート、状態、PID、プロセス名
 
-表示例:
-- イーサネット
-- Wi-Fi
-- ループバック
-- Bluetooth ネットワーク接続 など
+起動時と「再取得」の操作時にスナップショットを取得します。パブリック IP の取得には [ipify](https://www.ipify.org/) への HTTPS 接続を使用します。
 
-### 2. IPv4 / IPv6 の表示
-各アダプタに割り当てられている IPv4 / IPv6 アドレスを確認できます。
+## データの保存先
 
-### 3. ゲートウェイの確認
-接続先ネットワークのデフォルトゲートウェイ情報を確認できます。
+- インストール版は `%APPDATA%\NexaLink Monitor` と `%LOCALAPPDATA%\NexaLink Monitor` を使用します。
+- ポータブル版は EXE と同じ場所に `NexaLink-Monitor-PortableData` を作成します。移動時は EXE とデータフォルダーを一緒に移動してください。
+- 新しいデータフォルダーがなく旧版のフォルダーがある場合、`PC Network Tool` または `PC-Network-Tool-PortableData` を使用します。
 
-### 4. DNS の確認
-各アダプタに設定されている DNS 情報を確認できます。
+## 開発
 
-### 5. MAC アドレスの表示
-各アダプタの MAC アドレスを表示します。
-
-### 6. DHCP / 固定 IP の確認
-IP アドレスが DHCP で取得されているか、固定 IP 設定かを確認できます。
-
-### 7. パブリック IP の取得
-現在インターネット側から見えているパブリック IP を表示します。
-
-### 8. 接続中の基本情報の表示
-現在の接続情報を一覧で表示します。
-
-表示例:
-- Protocol
-- Local Address
-- Local Port
-- Remote Address
-- Remote Port
-- State
-- PID
-- Process
-
-## 利用目的
-
-このアプリは、次のような確認を行いたい場面を想定しています。
-
-- ネットワーク設定前に現在の状態を確認したい
-- VPN 接続前後の変化を確認したい
-- 仮想マシン接続時にどの IP やアダプタを見ればよいか確認したい
-- ローカル環境やクラウド接続前に、通信状態を整理したい
-- ポート待受や接続状況をまとめて見たい
-
-## 動作環境
-
-- Windows
-- WebView2 Runtime
-- Rust（ソースからビルドする場合）
-- Node.js
-- npm
-
-## 使用技術
-
-- Tauri 2
-- Rust
-- HTML
-- CSS
-- JavaScript
-- PowerShell
-
-## インストール
-
-依存関係をインストールします。
-
-npm install
-
-## 起動方法
-
-開発用に起動します。
-
-npm run tauri:dev
-
-## ビルド方法
-
-Windows向けのNSISインストーラー、単体ポータブルEXE、ZIP、各SHA-256を
-`dist` に生成します。
-
-npm run release:windows
-
-配布ビルドは、現在のWindowsユーザーの個人証明書ストアにあるコード署名証明書と、
-署名のタイムスタンプを必須とします。証明書のサムプリントを設定して実行します。
+Windows 上で Node.js、npm、Rust の MSVC ツールチェーン、Visual Studio C++ Build Tools、WebView2 Runtime を用意します。
 
 ```powershell
-$env:WINDOWS_CERTIFICATE_THUMBPRINT = '証明書の40桁のサムプリント'
+npm ci
+npm run tauri:dev
+npm test
+```
+
+| フォルダー | 内容 |
+| --- | --- |
+| `frontend/` | 画面、アイコン、スタイル、表示ロジック |
+| `src-tauri/` | Windows 側のネットワーク取得、アプリ設定、バンドル用アイコン |
+| `scripts/` | Windows 配布物のビルド、署名、署名テスト |
+| `tests/` | フロントエンドの回帰テスト |
+
+ネットワークの取得には Windows 標準の PowerShell を使用します。実行先と標準モジュールの探索先を固定し、各実行に 30 秒のタイムアウトと各出力に 4 MiB の上限を設けています。パブリック IP の取得には 5 秒と 1 KiB の上限を設けています。
+
+## Windows 向け配布ビルド
+
+Windows の現在のユーザーの個人証明書ストアにあるコード署名証明書を指定します。署名、タイムスタンプ、SHA-256 を検証した配布物が `dist/` に作成されます。
+
+```powershell
+$env:WINDOWS_CERTIFICATE_THUMBPRINT = 'コード署名証明書のサムプリント'
 npm run release:windows
 ```
 
-ローカル検証用の自己署名証明書は、次の手順で作成・利用できます。
+自己署名で検証する場合は、以下の手順で `SelfSigned` 付きのファイルを生成します。
 
 ```powershell
 powershell -NoProfile -File scripts/new-signing-certificate.ps1
 npm run release:windows -- -SelfSigned
+npm run test:signing
 ```
 
-秘密鍵は現在ユーザーのWindows証明書ストアに非エクスポート形式で保存します。
-`.signing` には公開証明書とサムプリントだけを保存し、Gitの対象から除外します。
-自己署名版はファイル名に `-SelfSigned` を付け、公開証明書と署名情報を同梱します。
-Windowsの信頼設定は変更しません。自己署名は公開配布用の発行元認証やSmartScreenの警告解除を保証しません。
+秘密鍵は Windows の証明書ストアに保存し、配布物には公開証明書を含めます。署名のタイムスタンプは既定で DigiCert のサーバーを利用します。`-TimestampUrl` で取得先を指定できます。
 
-署名時は既定で `http://timestamp.digicert.com` にダイジェストを含む署名データを送り、
-タイムスタンプを取得します。EXE本体や秘密鍵は送信しません。
-別のサーバーを使う場合は `-TimestampUrl` で指定できます。
-署名・タイムスタンプ・指定証明書との一致を検証してからZIPとSHA-256を生成します。
-既存の配布ファイルや `PortableData` は削除しません。
-
-開発用の署名なしビルドは `npm run tauri:build` で実行できます。
-
-## セキュリティ上の動作
-
-- PowerShellはWindows APIで取得したシステムディレクトリの絶対パスから起動します。
-- プロファイルや対話入力を無効化し、モジュール探索をWindows標準モジュールに制限します。
-- PowerShellは1回30秒、標準出力・標準エラーはそれぞれ4MiBを上限とします。
-- タイムアウトや出力上限超過ではプロセスを終了し、Windows Job Objectで子孫プロセスも終了します。
-- 取得処理はUIスレッドから分離し、UIとRustの両方で重複取得を防ぎます。
-- パブリックIP取得は接続3秒・全体5秒、応答1KiBまでに制限し、HTTPSの固定取得先から有効なIPアドレスだけを受け入れます。
-- CSPで外部スクリプト、外部ページ埋め込み、不要なWebView通信を制限します。
-
-## テスト
-
-```powershell
-npm test
-```
-
-RustテストではPowerShellの実行先・モジュール探索、タイムアウト、出力上限、
-異常終了、重複取得の抑止とIP値検証を確認します。
-JavaScriptテストでは連打の抑止、失敗後の再取得、エラー文字列の安全な表示を確認します。
-
-自己署名版の配布ビルド後は `npm run test:signing` で、証明書・タイムスタンプの検証と、
-署名なし・別の署名者・改ざんしたEXEの拒否も確認できます。
-
-## 配布形式
-
-- `PC-Network-Tool-Setup-1.0.2.exe`: NSISインストール版
-- `PC-Network-Tool-Portable-1.0.2.exe`: インストール不要の単体EXE
-- `PC-Network-Tool-Portable-1.0.2.zip`: 単体EXEと利用説明
-
-インストール版のデータは通常のAppDataに保存されます。ポータブル版は、
-EXEと同じ場所の `PC-Network-Tool-PortableData` だけを使用します。
-
-## 現在のバージョンで確認できる項目
-
-- アダプタ一覧
-- IPv4 / IPv6
-- ゲートウェイ
-- DNS
-- MAC
-- DHCP / 固定 IP
-- パブリック IP
-- 接続中の基本情報
-
-## 補足
-
-- パブリック IP の取得にはインターネット接続が必要です
-- 環境によっては一部の項目が取得できない場合があります
-- 管理者権限や Windows の設定状態により表示内容が変わる場合があります
-
-## 今後の拡張候補
-
-- VPN 状態の専用表示
-- 仮想アダプタの識別強化
-- ルーティング情報の表示
-- ポートの絞り込み機能
-- 接続状態の色分け表示
-- スナップショット保存機能
-- 接続前後の差分比較機能
+GitHub Actions ではバージョンタグのコミットを Windows 上でテストし、署名とハッシュを検証してから GitHub Releases に公開します。
 
 ## ライセンス
 
-MIT
+[MIT](LICENSE)

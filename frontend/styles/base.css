@@ -1,0 +1,52 @@
+:root {
+  color-scheme: dark;
+  --canvas: #0e192a;
+  --panel: #17253a;
+  --panel-border: #304662;
+  --table-head: #22354e;
+  --line: #2b405a;
+  --text: #edf4ff;
+  --muted: #aec1d8;
+  --blue: #66aaff;
+  --yellow: #ffcf25;
+  --success: #42d7a2;
+  --danger: #ffadad;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--text);
+  font: 15px/1.55 "Segoe UI", "Yu Gothic UI", Meiryo, sans-serif;
+}
+
+h1,
+h2,
+p,
+dl,
+dd {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 3px;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+}

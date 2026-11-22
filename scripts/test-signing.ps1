@@ -6,8 +6,9 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $configuration = Get-Content -LiteralPath (Join-Path $root '.signing\certificate.json') -Raw | ConvertFrom-Json
 if (-not $FilePath) {
-  $version = (Get-Content -LiteralPath (Join-Path $root 'src-tauri\tauri.conf.json') -Raw | ConvertFrom-Json).version
-  $FilePath = Join-Path $root "dist\PC-Network-Tool-Portable-$version-SelfSigned.exe"
+  $appConfiguration = Get-Content -LiteralPath (Join-Path $root 'src-tauri\tauri.conf.json') -Raw | ConvertFrom-Json
+  $filePrefix = $appConfiguration.productName.Replace(' ', '-')
+  $FilePath = Join-Path $root "dist\$filePrefix-Portable-$($appConfiguration.version)-SelfSigned.exe"
 }
 $FilePath = (Resolve-Path -LiteralPath $FilePath).Path
 $thumbprint = $configuration.thumbprint

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Read the application version on the main dashboard.",
+  "windows": ["main"],
+  "permissions": ["core:app:allow-version"]
+}

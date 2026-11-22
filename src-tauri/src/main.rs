@@ -1,7 +1,9 @@
-use serde::Serialize;
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, Read, Write};
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,8 +12,10 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 mod powershell;
 
-const APP_DIR_NAME: &str = "PC Network Tool";
-const PORTABLE_DATA_DIR_NAME: &str = "PC-Network-Tool-PortableData";
+const APP_DIR_NAME: &str = "NexaLink Monitor";
+const LEGACY_APP_DIR_NAME: &str = "PC Network Tool";
+const PORTABLE_DATA_DIR_NAME: &str = "NexaLink-Monitor-PortableData";
+const LEGACY_PORTABLE_DATA_DIR_NAME: &str = "PC-Network-Tool-PortableData";
 
 #[derive(Default)]
 struct NetworkRequestState(Arc<AtomicBool>);
@@ -58,11 +62,23 @@ impl RuntimePaths {
                     "executable directory was not found",
                 )
             })?;
-            let root = executable_dir.join(PORTABLE_DATA_DIR_NAME);
+            let root = data_root(
+                executable_dir,
+                PORTABLE_DATA_DIR_NAME,
+                LEGACY_PORTABLE_DATA_DIR_NAME,
+            );
             Ok(Self::from_roots(true, root.clone(), root))
         } else {
-            let roaming = required_environment_path("APPDATA")?.join(APP_DIR_NAME);
-            let local = required_environment_path("LOCALAPPDATA")?.join(APP_DIR_NAME);
+            let roaming = data_root(
+                &required_environment_path("APPDATA")?,
+                APP_DIR_NAME,
+                LEGACY_APP_DIR_NAME,
+            );
+            let local = data_root(
+                &required_environment_path("LOCALAPPDATA")?,
+                APP_DIR_NAME,
+                LEGACY_APP_DIR_NAME,
+            );
             Ok(Self::from_roots(false, roaming, local))
         }
     }
@@ -97,8 +113,14 @@ impl RuntimePaths {
         }
 
         let settings_path = self.config.join("settings.json");
-        if !settings_path.exists() {
-            fs::write(&settings_path, "{\n  \"version\": \"1.0.1\"\n}\n")?;
+        match fs::File::create_new(&settings_path) {
+            Ok(mut file) => writeln!(
+                file,
+                "{{\n  \"version\": \"{}\"\n}}",
+                env!("CARGO_PKG_VERSION")
+            )?,
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {}
+            Err(error) => return Err(error),
         }
 
         let timestamp = SystemTime::now()
@@ -134,6 +156,15 @@ impl RuntimePaths {
     }
 }
 
+fn data_root(parent: &Path, name: &str, legacy_name: &str) -> PathBuf {
+    let current = parent.join(name);
+    let legacy = parent.join(legacy_name);
+    if !current.exists() && legacy.is_dir() {
+        return legacy;
+    }
+    current
+}
+
 fn required_environment_path(name: &str) -> io::Result<PathBuf> {
     std::env::var_os(name).map(PathBuf::from).ok_or_else(|| {
         io::Error::new(
@@ -148,7 +179,9 @@ fn is_portable_executable(path: &Path) -> bool {
         .and_then(|name| name.to_str())
         .map(|name| {
             let lowercase = name.to_ascii_lowercase();
-            lowercase.starts_with("pc-network-tool-portable-") && lowercase.ends_with(".exe")
+            lowercase.ends_with(".exe")
+                && (lowercase.starts_with("nexalink-monitor-portable-")
+                    || lowercase.starts_with("pc-network-tool-portable-"))
         })
         .unwrap_or(false)
 }
@@ -160,6 +193,8 @@ struct Summary {
     default_adapter: String,
     adapter_count: usize,
     connection_count: usize,
+    established_count: usize,
+    listening_count: usize,
 }
 
 #[derive(Serialize, Clone)]
@@ -176,7 +211,7 @@ struct Adapter {
     is_default: bool,
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Connection {
     protocol: String,
@@ -187,6 +222,14 @@ struct Connection {
     state: String,
     pid: String,
     process: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ConnectionSnapshot {
+    established_count: usize,
+    listening_count: usize,
+    connections: Vec<Connection>,
 }
 
 #[derive(Serialize)]
@@ -236,8 +279,17 @@ fn get_public_ip() -> String {
 fn get_adapters() -> Result<Vec<Adapter>, String> {
     let script = r#"
 $adapters = Get-NetAdapter -IncludeHidden | Sort-Object InterfaceIndex
-$configs = Get-NetIPConfiguration
+$configs = Get-NetIPConfiguration -All
 $dhcps = Get-NetIPInterface -AddressFamily IPv4
+$activeIndexes = @($adapters | Where-Object Status -eq 'Up' | ForEach-Object InterfaceIndex)
+$interfaceMetrics = @{}
+foreach ($interface in $dhcps) {
+  $interfaceMetrics[$interface.InterfaceIndex] = $interface.InterfaceMetric
+}
+$defaultRoute = Get-NetRoute -AddressFamily IPv4 -DestinationPrefix '0.0.0.0/0' -PolicyStore ActiveStore -ErrorAction SilentlyContinue |
+  Where-Object { $activeIndexes -contains $_.InterfaceIndex } |
+  Sort-Object @{ Expression = { [long]$_.RouteMetric + [long]$interfaceMetrics[$_.InterfaceIndex] } }, InterfaceIndex |
+  Select-Object -First 1
 
 $result = foreach ($adapter in $adapters) {
   $cfg = $configs | Where-Object { $_.InterfaceIndex -eq $adapter.InterfaceIndex } | Select-Object -First 1
@@ -248,11 +300,11 @@ $result = foreach ($adapter in $adapters) {
     status = [string]$adapter.Status
     ipv4 = (($cfg.IPv4Address | ForEach-Object { $_.IPAddress }) -join ', ')
     ipv6 = (($cfg.IPv6Address | ForEach-Object { $_.IPAddress }) -join ', ')
-    gateway = [string]$cfg.IPv4DefaultGateway.NextHop
+    gateway = (($cfg.IPv4DefaultGateway | ForEach-Object { $_.NextHop }) -join ', ')
     dns = (($cfg.DNSServer.ServerAddresses) -join ', ')
     mac = [string]$adapter.MacAddress
     dhcp = if ($dhcp) { [string]$dhcp.Dhcp } else { 'Unknown' }
-    isDefault = [bool]($cfg.IPv4DefaultGateway -ne $null -and $adapter.Status -eq 'Up')
+    isDefault = [bool]($adapter.InterfaceIndex -eq $defaultRoute.InterfaceIndex)
   }
 }
 
@@ -289,56 +341,38 @@ $result | ConvertTo-Json -Depth 4
     Ok(adapters)
 }
 
-fn get_connections() -> Result<Vec<Connection>, String> {
+fn get_connections() -> Result<ConnectionSnapshot, String> {
     let script = r#"
-$conns = Get-NetTCPConnection |
-  Where-Object { $_.State -in @('Listen','Established') } |
-  Select-Object -First 100
-
-$result = foreach ($c in $conns) {
-  $p = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
-  [PSCustomObject]@{
-    protocol = 'tcp'
-    localAddress = [string]$c.LocalAddress
-    localPort = [string]$c.LocalPort
-    remoteAddress = [string]$c.RemoteAddress
-    remotePort = [string]$c.RemotePort
-    state = [string]$c.State
-    pid = [string]$c.OwningProcess
-    process = if ($p) { [string]$p.ProcessName } else { '-' }
+$conns = @(Get-NetTCPConnection | Where-Object { $_.State -in @('Listen','Established') })
+$processNames = @{}
+$result = @(
+  foreach ($c in ($conns | Select-Object -First 100)) {
+    if (-not $processNames.ContainsKey($c.OwningProcess)) {
+      $process = Get-Process -Id $c.OwningProcess -ErrorAction SilentlyContinue
+      $processNames[$c.OwningProcess] = if ($process) { [string]$process.ProcessName } else { '-' }
+    }
+    [PSCustomObject]@{
+      protocol = 'tcp'
+      localAddress = [string]$c.LocalAddress
+      localPort = [string]$c.LocalPort
+      remoteAddress = [string]$c.RemoteAddress
+      remotePort = [string]$c.RemotePort
+      state = [string]$c.State
+      pid = [string]$c.OwningProcess
+      process = $processNames[$c.OwningProcess]
+    }
   }
-}
+)
 
-$result | ConvertTo-Json -Depth 4
+[PSCustomObject]@{
+  establishedCount = @($conns | Where-Object State -eq 'Established').Count
+  listeningCount = @($conns | Where-Object State -eq 'Listen').Count
+  connections = $result
+} | ConvertTo-Json -Depth 4 -Compress
 "#;
 
     let raw = powershell::run(script)?;
-    if raw.is_empty() {
-        return Ok(vec![]);
-    }
-
-    let value: Value = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
-    let list = match value {
-        Value::Array(items) => items,
-        one => vec![one],
-    };
-
-    let mut connections = Vec::new();
-
-    for item in list {
-        connections.push(Connection {
-            protocol: item["protocol"].as_str().unwrap_or("-").to_string(),
-            local_address: item["localAddress"].as_str().unwrap_or("-").to_string(),
-            local_port: item["localPort"].as_str().unwrap_or("-").to_string(),
-            remote_address: item["remoteAddress"].as_str().unwrap_or("-").to_string(),
-            remote_port: item["remotePort"].as_str().unwrap_or("-").to_string(),
-            state: item["state"].as_str().unwrap_or("-").to_string(),
-            pid: item["pid"].as_str().unwrap_or("-").to_string(),
-            process: item["process"].as_str().unwrap_or("-").to_string(),
-        });
-    }
-
-    Ok(connections)
+    serde_json::from_str(&raw).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -357,7 +391,11 @@ async fn get_network_info(
 
 fn collect_network_info() -> Result<NetworkInfo, String> {
     let adapters = get_adapters()?;
-    let connections = get_connections()?;
+    let ConnectionSnapshot {
+        established_count,
+        listening_count,
+        connections,
+    } = get_connections()?;
     let public_ip = get_public_ip();
 
     let default_adapter = adapters
@@ -370,7 +408,9 @@ fn collect_network_info() -> Result<NetworkInfo, String> {
         public_ip,
         default_adapter,
         adapter_count: adapters.len(),
-        connection_count: connections.len(),
+        connection_count: established_count + listening_count,
+        established_count,
+        listening_count,
     };
 
     Ok(NetworkInfo {
@@ -444,7 +484,10 @@ mod tests {
     #[test]
     fn portable_release_name_is_detected_case_insensitively() {
         assert!(is_portable_executable(Path::new(
-            r"C:\Tools\PC-Network-Tool-Portable-1.0.1.exe"
+            r"C:\Tools\NexaLink-Monitor-Portable-1.1.0.exe"
+        )));
+        assert!(is_portable_executable(Path::new(
+            r"C:\Tools\NEXALINK-MONITOR-PORTABLE-TEST.EXE"
         )));
         assert!(is_portable_executable(Path::new(
             r"C:\Tools\pc-network-tool-portable-test.EXE"
@@ -454,16 +497,16 @@ mod tests {
     #[test]
     fn installed_and_development_names_are_not_portable() {
         assert!(!is_portable_executable(Path::new(
-            r"C:\Program Files\PC Network Tool\PC Network Tool.exe"
+            r"C:\Program Files\NexaLink Monitor\NexaLink Monitor.exe"
         )));
         assert!(!is_portable_executable(Path::new(
-            r"C:\repo\target\release\pc-network-tool.exe"
+            r"C:\repo\target\release\nexalink-monitor.exe"
         )));
     }
 
     #[test]
     fn portable_paths_stay_under_one_root() {
-        let root = PathBuf::from(r"D:\Portable\PC-Network-Tool-PortableData");
+        let root = PathBuf::from(r"D:\Portable\NexaLink-Monitor-PortableData");
         let paths = RuntimePaths::from_roots(true, root.clone(), root.clone());
         for path in [
             paths.user_data,
