@@ -4,7 +4,7 @@ NexaLink Monitor は、Windows PC のネットワーク設定と通信状態を�
 
 ## ダウンロード
 
-最新版は [GitHub Releases](https://github.com/aki-sho/pc-network-tool/releases/latest) から取得できます。Windows x64 と WebView2 Runtime が必要です。
+最新版は [GitHub Releases](https://github.com/aki-sho/nexalink-monitor/releases/latest) から取得できます。Windows x64 と WebView2 Runtime が必要です。
 
 | ファイル | 用途 |
 | --- | --- |
