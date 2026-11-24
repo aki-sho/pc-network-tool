@@ -45,6 +45,7 @@ body {
 }
 
 .panel {
+  min-width: 0;
   background: #fff;
   padding: 20px;
   border-radius: 14px;
@@ -59,7 +60,7 @@ body {
 
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 16px;
 }
 
@@ -80,6 +81,21 @@ body {
   font-size: 24px;
   font-weight: 700;
   word-break: break-all;
+}
+
+.info-card-description,
+.panel-note {
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.info-card-description {
+  margin: 8px 0 0;
+}
+
+.panel-note {
+  margin: -8px 0 12px;
 }
 
 .table-wrap {
@@ -103,6 +119,16 @@ td {
 
 th {
   background: #f3f4f6;
+}
+
+.cell-description {
+  display: block;
+  margin-top: 4px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .about-box p {

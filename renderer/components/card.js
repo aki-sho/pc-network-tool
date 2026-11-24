@@ -12,10 +12,11 @@ export function createCardGrid(items) {
     <div class="card-grid">
       ${items
         .map(
-          ([label, value]) => `
+          ([label, value, description]) => `
             <div class="info-card">
               <div class="info-card-label">${escapeHtml(label)}</div>
               <div class="info-card-value">${escapeHtml(value)}</div>
+              ${description ? `<p class="info-card-description">${escapeHtml(description)}</p>` : ""}
             </div>
           `
         )

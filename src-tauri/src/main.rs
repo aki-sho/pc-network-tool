@@ -98,7 +98,8 @@ impl RuntimePaths {
 
         let settings_path = self.config.join("settings.json");
         if !settings_path.exists() {
-            fs::write(&settings_path, "{\n  \"version\": \"1.0.1\"\n}\n")?;
+            let settings = format!("{{\n  \"version\": \"{}\"\n}}\n", env!("CARGO_PKG_VERSION"));
+            fs::write(&settings_path, settings)?;
         }
 
         let timestamp = SystemTime::now()
@@ -166,6 +167,9 @@ struct Summary {
 #[serde(rename_all = "camelCase")]
 struct Adapter {
     name: String,
+    interface_description: String,
+    interface_type: Option<u32>,
+    virtual_adapter: bool,
     status: String,
     ipv4: String,
     ipv6: String,
@@ -245,6 +249,9 @@ $result = foreach ($adapter in $adapters) {
 
   [PSCustomObject]@{
     name = $adapter.Name
+    interfaceDescription = [string]$adapter.InterfaceDescription
+    interfaceType = $adapter.InterfaceType
+    virtualAdapter = [bool]$adapter.Virtual
     status = [string]$adapter.Status
     ipv4 = (($cfg.IPv4Address | ForEach-Object { $_.IPAddress }) -join ', ')
     ipv6 = (($cfg.IPv6Address | ForEach-Object { $_.IPAddress }) -join ', ')
@@ -275,6 +282,14 @@ $result | ConvertTo-Json -Depth 4
     for item in list {
         adapters.push(Adapter {
             name: item["name"].as_str().unwrap_or("-").to_string(),
+            interface_description: item["interfaceDescription"]
+                .as_str()
+                .unwrap_or_default()
+                .to_string(),
+            interface_type: item["interfaceType"]
+                .as_u64()
+                .and_then(|value| u32::try_from(value).ok()),
+            virtual_adapter: item["virtualAdapter"].as_bool().unwrap_or(false),
             status: item["status"].as_str().unwrap_or("-").to_string(),
             ipv4: item["ipv4"].as_str().unwrap_or("-").to_string(),
             ipv6: item["ipv6"].as_str().unwrap_or("-").to_string(),

@@ -36,7 +36,8 @@ jobs:
           if ($binaries.Count -eq 0) { throw 'No distribution binaries were produced' }
           foreach ($file in $binaries) { $hash=(Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant(); [IO.File]::WriteAllText(($file.FullName+'.sha256'), $hash+'  '+$file.Name+[Environment]::NewLine, [Text.Encoding]::ASCII) }
           $items = @(Get-ChildItem -LiteralPath $out -File | ForEach-Object { @{name=$_.Name;size=$_.Length;sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()} })
-          @{app='pc-network-tool';version='1.0.2';commit=$env:GITHUB_SHA;repository=$env:GITHUB_REPOSITORY;run=$env:GITHUB_RUN_ID;files=$items} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $out 'release-build.json') -Encoding utf8
+          $version = (Get-Content -LiteralPath 'src-tauri/tauri.conf.json' -Raw | ConvertFrom-Json).version
+          @{app='pc-network-tool';version=$version;commit=$env:GITHUB_SHA;repository=$env:GITHUB_REPOSITORY;run=$env:GITHUB_RUN_ID;files=$items} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $out 'release-build.json') -Encoding utf8
       - name: Upload verified distribution
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

@@ -1,6 +1,6 @@
 # PC Network Tool
 
-> 最新バージョン: 1.0.2（2026-10-31）。ローカルの未公開変更を反映し、ソースと配布物を揃えた同期リリースです。
+> 最新バージョン 1.0.3（2026-11-14）。概要、アダプタ一覧、IP / DNSの表示に説明を追加しました。
 
 PC Network Tool は、Windows 上で現在のネットワーク設定や接続状態を確認するためのデスクトップアプリです。  
 Tauri 2、Rust、HTML、CSS、JavaScript で構成しています。
@@ -9,12 +9,12 @@ PC のネットワーク設定を行う前や、VPN 接続、仮想マシン接�
 
 ## バージョン
 
-v1.0.1
+v1.0.3
 
 ## 主な機能
 
 ### 1. アダプタ一覧の表示
-現在の PC に存在するネットワークアダプタを一覧表示します。
+現在の PC に存在するネットワークアダプタを一覧表示します。Windowsが返す種類や説明に基づき、接続名の下に用途を表示します。
 
 表示例:
 - イーサネット
@@ -152,9 +152,9 @@ JavaScriptテストでは連打の抑止、失敗後の再取得、エラー文�
 
 ## 配布形式
 
-- `PC-Network-Tool-Setup-1.0.2.exe`: NSISインストール版
-- `PC-Network-Tool-Portable-1.0.2.exe`: インストール不要の単体EXE
-- `PC-Network-Tool-Portable-1.0.2.zip`: 単体EXEと利用説明
+- `PC-Network-Tool-Setup-1.0.3.exe` はNSISインストール版
+- `PC-Network-Tool-Portable-1.0.3.exe` はインストール不要の単体EXE
+- `PC-Network-Tool-Portable-1.0.3.zip` は単体EXEと利用説明
 
 インストール版のデータは通常のAppDataに保存されます。ポータブル版は、
 EXEと同じ場所の `PC-Network-Tool-PortableData` だけを使用します。

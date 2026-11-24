@@ -1,6 +1,6 @@
 {
   "name": "pc-network-tool",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "PC network information viewer",
   "author": "akisho",
   "type": "module",

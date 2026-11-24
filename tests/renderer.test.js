@@ -1,5 +1,33 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { renderAdaptersPage } from "../renderer/pages/adapters.js";
+import { renderIpDnsPage } from "../renderer/pages/ip-dns.js";
+import { renderSummaryPage } from "../renderer/pages/summary.js";
+
+test("adapter tables explain each connection using Windows metadata", () => {
+  const adapters = [
+    { name: "ローカル エリア接続* 73", interfaceDescription: "WAN Miniport (IKEv2)", interfaceType: 131, virtualAdapter: true, status: "Not Present", dhcp: "Unknown" },
+    { name: "Teredo Tunneling Pseudo-Interface", interfaceType: 131, virtualAdapter: true },
+    { name: "<custom adapter>", interfaceType: 6, virtualAdapter: true }
+  ];
+
+  for (const render of [renderAdaptersPage, renderIpDnsPage]) {
+    const root = { innerHTML: "" };
+    render(root, adapters);
+    assert.match(root.innerHTML, /ローカル エリア接続\* 73<span[^>]+>IKEv2方式のVPN接続/);
+    assert.match(root.innerHTML, /Teredo Tunneling Pseudo-Interface<span[^>]+>ルーターのNAT/);
+    assert.match(root.innerHTML, /&lt;custom adapter&gt;<span[^>]+>ソフトウェアが作成した仮想/);
+    assert.doesNotMatch(root.innerHTML, /<custom adapter>/);
+  }
+});
+
+test("summary explains the displayed counts and adapter selection", () => {
+  const root = { innerHTML: "" };
+  renderSummaryPage(root, { publicIp: "203.0.113.1", defaultAdapter: "Ethernet", adapterCount: 14, connectionCount: 100 });
+  assert.equal((root.innerHTML.match(/info-card-description/g) ?? []).length, 4);
+  assert.match(root.innerHTML, /IPv4の既定ゲートウェイがある接続のうち、一覧で最初/);
+  assert.match(root.innerHTML, /TCPの接続済みと待受の合計。最大100件/);
+});
 
 test("network reload suppresses duplicates and recovers safely after failure", async (t) => {
   class Element {

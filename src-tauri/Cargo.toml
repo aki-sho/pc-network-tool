@@ -1,6 +1,6 @@
 [package]
 name = "pc-network-tool"
-version = "1.0.2"
+version = "1.0.3"
 description = "PC Network Tool"
 authors = ["akisho"]
 edition = "2021"
